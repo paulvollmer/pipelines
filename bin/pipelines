@@ -3,6 +3,7 @@
 Usage: 
     pipelines (--version|--help)
     pipelines api [--config=<config>] [--host=<host>] [--port=<port>] [--workspace=<workspace>]
+    pipelines webhook [--config=<config>] [--host=<host>] [--port=<port>] [--workspace=<workspace>]
 
 Options:
     --config=<config>           Path to config file [default: /etc/pipelines/pipelines.conf]
@@ -12,6 +13,7 @@ Options:
 
 Help:
     pipelines api       Starts pipelines' API
+    pipelines webhook   Starts pipelines' WebHook API
 '''
 import docopt
 
@@ -19,7 +21,8 @@ import sys
 import os
 
 from pipelines import __version__
-from pipelines.api import server
+from pipelines.api import server as admin_api
+from pipelines.webhook import server as webhook_api
 
 
 def parse_config(config_file):
@@ -33,6 +36,7 @@ if __name__ == '__main__':
         help=True
     )
 
+    # Starts the Admin API
     if args.get('api'):
         options = {
             'workspace': args.get('--workspace'),
@@ -40,9 +44,22 @@ if __name__ == '__main__':
             'port': args.get('--port')
         }
         try:
-            server.main(options)
+            admin_api.main(options)
         except KeyboardInterrupt:
             print 'Exiting'
+
+    # Starts the WebHook API
+    if args.get('webhook'):
+        options = {
+            'workspace': args.get('--workspace'),
+            'host': args.get('--host'),
+            'port': args.get('--port')
+        }
+        try:
+            webhook_api.main(options)
+        except KeyboardInterrupt:
+            print 'Exiting'
+
     else:
         print __doc__.strip('\n')
         sys.exit(0)

@@ -25,6 +25,7 @@ setup(
         'pipelines',
         'pipelines.pipeline',
         'pipelines.api',
+        'pipelines.webhook',
         'pipelines.plugins',
         'pipelines.plugin'
     ],

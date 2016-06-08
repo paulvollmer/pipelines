@@ -113,6 +113,12 @@ Pipeline definition file uses YAML syntax. Example:
 
 .. code-block:: yaml
 
+    triggers:
+      - name: github
+        type: github
+      - name: chatops
+        type: slack
+        
     tasks:
       - executor: executors.dummy
         cmd: "anything"
