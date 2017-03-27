@@ -39,9 +39,9 @@ Configuration
 -------------
 
 **Pipelines** runs solely on files. No database is currently required.
-All the pipelines, the logs of each run and various temporary files are stored in the ``workspace``. 
+All the pipelines, the logs of each run and various temporary files are stored under the ``workspace`` folder. 
 
-The workspace is a folder that needs to be specified when running ``pipelines``.
+Workspace is a folder that needs to be specified when running ``pipelines``.
 
 .. code-block:: bash
 
@@ -64,8 +64,8 @@ You may want to specify a different binding IP address (default: ``127.0.0.1``) 
 
 You can now access **pipelines** at http://localhost:8888
 
-Run as a daemon
----------------
+How to run as a daemon
+----------------------
 
 Create a dedicated user to run pipelines
 
@@ -106,6 +106,36 @@ Access the web interface at http://localhost:8888
 
 Additionaly you may want to use nginx as reverse proxy as well. See sample config from ``etc/nginx``.
 
+Authentication
+--------------
+
+Static authentication
+`````````````````````
+
+You can define a static admin user by specifying the following options when running pipelines:
+
+.. code-block:: bash
+
+    --username ADMIN_USER
+    --password ADMIN_PASS
+
+
+Github Oauth
+````````````
+
+**This is an experimental feature**
+
+You can add ``oauth`` support from Github to allow **teams** to access pipelines. You will need to set it by using environment variables for the Oauth Apps, and the ``--github-auth`` to limit teams access.
+
+.. code-block:: bash
+  
+    GH_OAUTH_KEY=my_oauth_app_key \
+    GH_OAUTH_SECRET=my_super_secret \
+    pipelines server [--options] --github-auth=MY_ORG/MY_TEAM
+
+You can create Oauth Key/Secret in `Github Oauth Applications <https://github.com/settings/developers>`_ 
+
+**Note**: If you use Github Oauth, you will **not** be able to use static authentication.
 
 Pipelines file format
 =====================
@@ -136,7 +166,8 @@ This is a very basic pipeline definition. Save it in your workspace within a ``.
     # but you can use others by defining the "type" field.
     actions:
         - 'echo "Starting task for {{ code_branch }}"'
-        - type: bash
+        - name: 'My custom name step'
+          type: bash
           cmd: "echo 'less compact way to define actions'"
         - 'ls -la /tmp'
 
@@ -164,8 +195,9 @@ You can then use the variables as seen above.
 Prompts
 -------
 
-You can prompt users to manually input fields when they run the pipeine through the web-UI. To do this add a ``prompt``
-section to your pipeline definition. The ``prompt`` fields will **override** the variables from the ``vars`` section.
+You can prompt users to manually input fields when they run the pipeline through the web-UI. To do this add a ``prompt`` section to your pipeline definition. The ``prompt`` fields will **override** the variables from the ``vars`` section.
+
+You can alternatively provide a list of acceptable values; the prompt will then appear as a select field and let you choose from the available values
 
 .. code-block:: yaml
 
@@ -177,12 +209,22 @@ section to your pipeline definition. The ``prompt`` fields will **override** the
         # This is the default value when triggered via the web UI
         my_var: default_with_prompt
 
+        # This will appear as a select field
+        my_var_from_select:
+            type: select
+            options:
+                - value1
+                - value2
+
     actions:
         # This will display:
         #    "default_no_prompt" when call via webhook
         #    "default_with_prompt" when call via UI but keeping the default
         #    "other" when call via UI and "other" is inputted by the user
         - echo {{ my_var }}
+
+        # Depending on the selected value, will display value1 or value2
+        - echo {{ my_var_from_select }}
 
 
 Actions
@@ -274,13 +316,43 @@ If you want to run your pipeline by triggering it through a webhook you can enab
         - type: webhook
 
 
-If you open the web-UI you can see the webhook URL that was generated for this pipeline in the "Webhook" tab. You can
-for example `configure GitHub repository <https://developer.github.com/webhooks/creating/>`_ to call this url after every commit.
+If you open the web-UI you can see the webhook URL that was generated for this pipeline in the "Webhook" tab. You can for example `configure GitHub repository <https://developer.github.com/webhooks/creating/>`_ to call this url after every commit.
 
+You can access the content of the webhook content in the actions in the ``webhook_content`` variable; e.g. ``echo {{ webhook_content.commit_id }}``
 
 **Note**:
 
-- documentation is coming to explain how to use the content of the data sent through the hook.
+- You need to send the message via POST as ``application/json`` Content-Type.
+- Documentation is coming to explain how to use the content of the data sent through the hook.
+
+Advanced Templates
+==================
+
+Pipelines uses `Jinja2 <http://jinja.pocoo.org/docs/2.9/templates/>`_ to do variables replacement. You can use the whole set of builtin features from the Jinja2 engine to perform advanced operations.
+
+.. code-block:: yaml
+
+    prompt:
+        stuff:
+            type: select
+            options:
+                - good
+                - bad
+
+    actions:
+        - name: Print something
+          type: bash
+          cmd: |
+              {% if stuff == 'good' %}
+                echo "Do good stuff..."
+              {% else %}
+                echo "Do not so good stuff..."
+              {% endif %}
+
+        - name: Use builtin filters
+          type: bash
+          # Will display 'goose' or 'base'
+          cmd: echo {{ stuff | replace('d', 'se') }}
 
 
 Dirty line by line setup
@@ -298,6 +370,16 @@ Dirty line by line setup
 - ``mkdir ~/pipelines_workspace``
 - ``pipelines server --workspace ~/pipelines_workspace --username admin --password admin``
 
+
+Docker
+======
+
+**Note**: Not heavily tested. 
+
+.. code-block:: bash
+
+    docker run -d boratbot/pipelines
+ 
 
 Roadmap
 =======
